@@ -9,7 +9,7 @@ release:
 	$(MAKE) translate
 
 dev: build
-	dosbox -C 'MOUNT C $(cwd)' -C 'C:' -C 'DOSMOS.COM'
+	dosbox -C 'MOUNT C $(cwd)' -C 'C:' -C 'ARCADE.COM'
 
 build:
 	cargo build
