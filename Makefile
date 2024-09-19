@@ -17,5 +17,5 @@ build:
 
 translate:
 	mkdir -p out
-	cargo objcopy --release -- -O binary --binary-architecture=i386:x86 out/dosmos.com
+	cargo objcopy --release -- -O binary --binary-architecture=i386:x86 out/arcade.com
 

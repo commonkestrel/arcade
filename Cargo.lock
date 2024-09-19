@@ -3,7 +3,7 @@
 version = 3
 
 [[package]]
-name = "dosmos"
+name = "arcade"
 version = "0.1.0"
 dependencies = [
  "rust_dos",
