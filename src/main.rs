@@ -6,7 +6,7 @@ mod dos;
 use dos::graphics::{Color, Screen};
 use embedded_graphics::{prelude::{Dimensions, DrawTarget, Primitive}, primitives::{Circle, PrimitiveStyle}, Drawable};
 use embedded_gui::{self as egui, widgets::{background::Background, label::Label, layouts::linear::Column}};
-use backend_embedded_graphics::{self as egui_backend, EgCanvas, widgets::label::ascii::LabelConstructor};
+use backend_embedded_graphics::{self as egui_backend, themes::Theme, widgets::label::ascii::LabelConstructor, EgCanvas};
 use egui::Window;
 // Mostly included for the allocator
 use rust_dos::{entry, println, print};
@@ -42,11 +42,16 @@ fn main() {
             .add(Label::new("Hello, world!"))
     );
 
+    gui
+        .canvas
+        .target
+        .clear(Color::BACKGROUND_COLOR)
+        .unwrap();
+
     gui.update();
     gui.measure();
     gui.arrange();
     gui.draw().unwrap();
-
 
     loop {
         let code = dos::get_keyboard_input();

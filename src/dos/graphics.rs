@@ -60,7 +60,7 @@ impl PixelColor for Color {
 }
 
 impl Theme for Color {
-    const BACKGROUND_COLOR: Self = Color(0x35);
+    const BACKGROUND_COLOR: Self = Color(0x7C);
     const BORDER_COLOR: Self = Color(0x1F);
     const TEXT_COLOR: Self = Color(0x0F);
 }
