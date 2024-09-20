@@ -1,6 +1,11 @@
-use core::arch::asm;
 
+
+use core::{arch::asm, sync::atomic::{AtomicU64, Ordering}};
+
+use backend_embedded_graphics::themes::Theme;
 use embedded_graphics::prelude::{DrawTarget, OriginDimensions, PixelColor, Size};
+
+static INSTANCES: AtomicU64 = AtomicU64::new(0);
 
 pub struct Screen {
     _inner: (),
@@ -13,14 +18,20 @@ impl Screen {
     }
 }
 
+impl Drop for Screen {
+    fn drop(&mut self) {
+        super::set_video_mode(0x10);
+    }
+}
+
 impl DrawTarget for Screen {
     type Color = Color;
     type Error = ();
 
     fn draw_iter<I>(&mut self, pixels: I) -> Result<(), Self::Error>
-        where
-            I: IntoIterator<Item = embedded_graphics::Pixel<Self::Color>> {
-        
+    where
+        I: IntoIterator<Item = embedded_graphics::Pixel<Self::Color>>
+    {
         for pixel in pixels {
             // only plot this pixel if the x and y coordinates fit in a u16
             let (x, y): (u16, u16) = match (pixel.0.x.try_into(), pixel.0.y.try_into()) {
@@ -46,6 +57,12 @@ pub struct Color(pub u8);
 
 impl PixelColor for Color {
     type Raw = ();
+}
+
+impl Theme for Color {
+    const BACKGROUND_COLOR: Self = Color(0x35);
+    const BORDER_COLOR: Self = Color(0x1F);
+    const TEXT_COLOR: Self = Color(0x0F);
 }
 
 pub fn plot_pixel(x: u16, y: u16, color: u8) {
