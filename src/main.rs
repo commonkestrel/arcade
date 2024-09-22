@@ -2,14 +2,20 @@
 #![no_main]
 
 mod dos;
+mod gui {
+    pub mod input;
+}
 
-use dos::graphics::{Color, Screen};
-use embedded_graphics::{prelude::{Dimensions, DrawTarget, Primitive}, primitives::{Circle, PrimitiveStyle}, Drawable};
-use embedded_gui::{self as egui, widgets::{background::Background, label::Label, layouts::linear::Column}};
-use backend_embedded_graphics::{self as egui_backend, themes::Theme, widgets::label::ascii::LabelConstructor, EgCanvas};
-use egui::Window;
+extern crate alloc;
+
+use dos::{graphics::{Color, Screen}, keyboard::Scancode, SystemTime};
+use embedded_graphics::{mono_font::{ascii::FONT_6X9, MonoTextStyle, MonoTextStyleBuilder}, prelude::{Dimensions, DrawTarget, Point, Primitive}, primitives::{Circle, PrimitiveStyle}, text::{Text, TextStyleBuilder}, Drawable};
+use gui::input::TextInput;
 // Mostly included for the allocator
-use rust_dos::{entry, println, print};
+use rust_dos::{entry, println, print};      
+
+use alloc::{format, string::ToString};
+use core::fmt::Write;
 
 entry!(main);
 
@@ -31,30 +37,41 @@ fn main() {
         }
     }
 
-    // let bounding_box = screen.bounding_box();
-    // let _ = Circle::with_center(bounding_box.center(), 100)
-    //     .into_styled(PrimitiveStyle::with_stroke(Color(0x01), 10))
-    //     .draw(&mut screen);
+    let _ = screen.clear(Color::BACKGROUND_COLOR);
 
-    let mut gui = Window::new(
-        egui_backend::EgCanvas::new(screen),
-        Column::new()
-            .add(Label::new("Hello, world!"))
-    );
+    let mut input = TextInput::new(Point::new(320/2 - 60, 50), 120);
 
-    gui
-        .canvas
-        .target
-        .clear(Color::BACKGROUND_COLOR)
-        .unwrap();
+    let character_style = MonoTextStyleBuilder::new()
+        .font(&FONT_6X9)
+        .text_color(Color(0x0F))
+        .background_color(Color(0x08))
+        .build();
 
-    gui.update();
-    gui.measure();
-    gui.arrange();
-    gui.draw().unwrap();
+    // let _ = Text::new("Scancode", screen.bounding_box().center(), character_style).draw(&mut screen);
+
+
+    input.set_selected(true);
+    input.draw(&mut screen);
 
     loop {
-        let code = dos::get_keyboard_input();
-        if code != 0 { break; }
+        let code: Result<Scancode, ()> = dos::get_keyboard_input().try_into();
+
+
+        if let Ok(Scancode::Escape) = code {
+            break;
+        }
+
+        if let Ok(code) = code {
+            // Text::new("Scancode", screen.bounding_box().center(), character_style).draw(&mut screen).unwrap();
+            // let bounding_box = screen.bounding_box();
+            // let _ = Circle::with_center(bounding_box.center(), 100)
+            //     .into_styled(PrimitiveStyle::with_stroke(Color(0x01), 10))
+            //     .draw(&mut screen);
+
+            input.update(code);
+            input.draw(&mut screen);
+        }
     }
 }
+
+struct Clock;

@@ -2,7 +2,6 @@
 
 use core::{arch::asm, sync::atomic::{AtomicU64, Ordering}};
 
-use backend_embedded_graphics::themes::Theme;
 use embedded_graphics::prelude::{DrawTarget, OriginDimensions, PixelColor, Size};
 
 static INSTANCES: AtomicU64 = AtomicU64::new(0);
@@ -44,6 +43,11 @@ impl DrawTarget for Screen {
 
         Ok(())
     }
+
+    fn clear(&mut self, color: Self::Color) -> Result<(), Self::Error> {
+        fill_screen(color.0);
+        Ok(())
+    }
 }
 
 impl OriginDimensions for Screen {
@@ -59,10 +63,10 @@ impl PixelColor for Color {
     type Raw = ();
 }
 
-impl Theme for Color {
-    const BACKGROUND_COLOR: Self = Color(0x7C);
-    const BORDER_COLOR: Self = Color(0x1F);
-    const TEXT_COLOR: Self = Color(0x0F);
+impl Color {
+    pub const BACKGROUND_COLOR: Self = Color(0x7C);
+    pub const BORDER_COLOR: Self = Color(0x1F);
+    pub const TEXT_COLOR: Self = Color(0x0F);
 }
 
 pub fn plot_pixel(x: u16, y: u16, color: u8) {
@@ -76,5 +80,22 @@ pub fn plot_pixel(x: u16, y: u16, color: u8) {
                 in("dx") y,
             )
         }
+    }
+}
+
+pub fn fill_screen(color: u8) {
+    unsafe {
+        let gfx = (0xA0000 - 320*20 - 32) as *mut u8;
+        gfx.write_bytes(color, 320*200);
+        // asm!(
+            // "mov   es, ax",
+            // "xor   di, di",
+            // "mov   cx, 320*200/2",
+            // "cld",
+            // "xor ax,ax",
+            // "rep   stosw",
+            // inout("ax") 0xA000 => _,
+            // in("dl") color,
+        // )
     }
 }

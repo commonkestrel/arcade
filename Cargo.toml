@@ -6,8 +6,7 @@ edition = "2021"
 [dependencies]
 embedded-graphics = "0.7.0"
 rust_dos = { git="https://github.com/o8vm/rust_dos.git" }
-embedded-gui = { git="https://github.com/bugadani/embedded-gui.git" }
-backend-embedded-graphics = { git="https://github.com/bugadani/embedded-gui.git" }
+embedded-time = "0.12.1"
 
 [profile.dev]
 strip = true
