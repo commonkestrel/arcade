@@ -1,31 +1,47 @@
 use alloc::string::String;
-use embedded_graphics::{mono_font::{ascii::FONT_6X12, MonoTextStyle}, prelude::*, primitives::{Line, PrimitiveStyleBuilder, Rectangle}, text::Text};
+use embedded_graphics::{mono_font::{ascii::{FONT_6X10, FONT_6X12}, MonoTextStyle, MonoTextStyleBuilder}, prelude::*, primitives::{Line, PrimitiveStyleBuilder, Rectangle}, text::{Text, TextStyleBuilder}};
 
-use crate::dos::{graphics::Color, keyboard::Scancode, SystemTime};
+use crate::dos::{graphics::{Color, Screen}, keyboard::Scancode, SystemTime};
+
+use super::Element;
 
 pub struct TextInput {
     content: String,
-    width: u32,
+    width: usize,
     cursor: usize,
     selected: bool,
     position: Point,
+    need_clear: bool,
 }
 
 impl TextInput {
     const TEXT_PIXEL_WIDTH: usize = 6;
 
-    pub fn new(top_left: Point, width: u32) -> TextInput {
+    pub fn new(top_left: Point, width: usize) -> TextInput {
         Self {
-            content: String::new(),
+            content: String::with_capacity(width / Self::TEXT_PIXEL_WIDTH),
             width,
             cursor: 0,
             selected: false,
             position: top_left,
+            need_clear: false,
         }
     }
 
-    pub fn update(&mut self, sc: Scancode) {
-        if self.content_full() {
+    fn insert_content(&mut self, content: char) {
+        self.content.insert(self.cursor, content);
+        self.cursor += 1;
+    }
+
+
+    fn content_full(&self) -> bool {
+        return self.content.len() >= self.width / Self::TEXT_PIXEL_WIDTH;
+    }
+}
+
+impl Element for TextInput {
+    fn update(&mut self, sc: Scancode) {
+        if self.content_full() && sc != Scancode::Backspace && sc != Scancode::Left && sc != Scancode::Right {
             return;
         }
 
@@ -73,62 +89,96 @@ impl TextInput {
                 self.cursor = (self.cursor + 1).min(self.content.len())
             },
             Scancode::Left => {
-                // self.insert_content('<');
+                self.need_clear = true;
                 self.cursor = self.cursor.checked_sub(1).unwrap_or(0)
             },
             Scancode::Backspace => {
                 if self.cursor > 0 {
                     self.cursor -= 1;
                     self.content.remove(self.cursor);
+                    self.need_clear = true;
                 }
             }
             _ => {}
         }
     }
 
-    pub fn insert_content(&mut self, content: char) {
-        self.content.insert(self.cursor, content);
-        self.cursor += 1;
-    }
 
-    pub fn set_selected(&mut self, selected: bool) {
+    fn set_selected(&mut self, selected: bool) {
         self.selected = selected;
+        self.need_clear = true;
     }
 
-    pub fn draw(&self, target: &mut impl DrawTarget<Color = Color>) {
-        let blink = SystemTime::now().second() % 2 == 0;
+    fn draw(&mut self, target: &mut Screen) {
+        let character_style = MonoTextStyleBuilder::new()
+            .text_color(Color(0x00))
+            .background_color(Color(0x0F))
+            .font(&FONT_6X10)
+            .build();
 
+        let text_position = Point::new(self.position.x + 2, self.position.y + 9);
+
+        let next = Text::new(&self.content, text_position, character_style).draw(target).unwrap();
+
+        if self.need_clear {
+            self.need_clear = false;
+
+            let start = Point::new(next.x, self.position.y + 1);
+
+            let remaining_characters = self.width / Self::TEXT_PIXEL_WIDTH - self.content.len();
+            let size = Size::new((remaining_characters*Self::TEXT_PIXEL_WIDTH) as u32, 11 as u32);
+
+            let style = PrimitiveStyleBuilder::new()
+                .fill_color(Color(0x0F))
+                .build();
+
+            let _ = Rectangle::new(start, size).into_styled(style).draw(target);
+        }
+
+        if self.selected && !self.content_full() {
+            let start = Point::new(self.position.x + 2 + ((self.cursor*Self::TEXT_PIXEL_WIDTH) as i32), self.position.y + 10);
+            let end = Point::new(start.x + (Self::TEXT_PIXEL_WIDTH as i32), start.y);
+            let style = PrimitiveStyleBuilder::new()
+                .stroke_color(Color(0x00))
+                .stroke_width(1)
+                .build();
+
+            let _ = Line::new(start, end)
+                .into_styled(style)
+                .draw(target);
+        }
+    }
+
+    fn redraw(&mut self, target: &mut Screen) {
         let style = PrimitiveStyleBuilder::new()
             .stroke_color(Color(0x00))
             .stroke_width(1)
             .fill_color(Color(0x0F))
             .build();
 
-        let _ = Rectangle::new(self.position, Size::new(self.width + 4, 13))
+        let _ = Rectangle::new(self.position, Size::new((self.width + 4) as u32, 13))
             .into_styled(style)
             .draw(target);
 
-        let style = MonoTextStyle::new(&FONT_6X12, Color(0x00));
+        let style = MonoTextStyle::new(&FONT_6X10, Color(0x00));
         let mut text_position = self.position;
         text_position.x += 2;
         text_position.y += 9;
 
         let _ = Text::new(&self.content, text_position, style).draw(target);
 
-        // if blink {
-        //     let start = Point::new(self.position.x + 2 + ((self.cursor*Self::TEXT_PIXEL_WIDTH) as i32), self.position.y + 10);
-        //     let end = Point::new(start.x + (Self::TEXT_PIXEL_WIDTH as i32), start.y);
-        //     let style = PrimitiveStyleBuilder::new()
-        //         .stroke_color(Color(0x00))
-        //         .build();
+        if self.selected && !self.content_full() {
+            let start = Point::new(self.position.x + 2 + ((self.cursor*Self::TEXT_PIXEL_WIDTH) as i32), self.position.y + 10);
+            let end = Point::new(start.x + (Self::TEXT_PIXEL_WIDTH as i32), start.y);
+            let style = PrimitiveStyleBuilder::new()
+                .stroke_color(Color(0x00))
+                .stroke_width(1)
+                .build();
 
-        //     let _ = Line::new(start, end)
-        //         .into_styled(style)
-        //         .draw(target);
-        // }
+            let _ = Line::new(start, end)
+                .into_styled(style)
+                .draw(target);
+        }
     }
 
-    fn content_full(&self) -> bool {
-        return (self.content.len() as u32) >= self.width / (Self::TEXT_PIXEL_WIDTH as u32);
-    }
 }
